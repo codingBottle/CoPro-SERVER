@@ -3,6 +3,7 @@ package com.example.copro.member.application;
 import com.example.copro.member.api.dto.request.MemberGitHubUrlUpdateReqDto;
 import com.example.copro.member.api.dto.request.MemberLikeReqDto;
 import com.example.copro.member.api.dto.request.MemberProfileUpdateReqDto;
+import com.example.copro.member.api.dto.response.LikeSseResDto;
 import com.example.copro.member.api.dto.response.MemberChattingProfileResDto;
 import com.example.copro.member.api.dto.response.MemberInfoResDto;
 import com.example.copro.member.api.dto.response.MemberResDto;
@@ -12,6 +13,7 @@ import com.example.copro.member.domain.repository.MemberRepository;
 import com.example.copro.member.exception.ExistsLikeMemberException;
 import com.example.copro.member.exception.ExistsNickNameException;
 import com.example.copro.member.exception.MemberNotFoundException;
+import com.example.copro.notification.application.NotificationService;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,9 +26,13 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final MemberLikeRepository memberLikeRepository;
 
-    public MemberService(MemberRepository memberRepository, MemberLikeRepository memberLikeRepository) {
+    private final NotificationService notificationService;
+
+    public MemberService(MemberRepository memberRepository, MemberLikeRepository memberLikeRepository,
+                         NotificationService notificationService) {
         this.memberRepository = memberRepository;
         this.memberLikeRepository = memberLikeRepository;
+        this.notificationService = notificationService;
     }
 
     // nickname으로 member채팅프로필 불러오기
@@ -101,6 +107,14 @@ public class MemberService {
 
         getMember.addMemberLike(likeMember);
         memberRepository.save(getMember);
+
+        LikeSseResDto likeSseResDto = LikeSseResDto.builder()
+                .myNickname(getMember.getNickName())
+                .likeMemberNickname(likeMember.getNickName())
+                .build();
+
+        notificationService.customNotify(likeMember.getEmail(), likeSseResDto, "좋아요를 눌렀습니다", "like");
+
     }
 
     // member 관심 목록 중복검사
